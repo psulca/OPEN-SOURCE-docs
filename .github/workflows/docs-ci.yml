@@ -65,13 +65,22 @@ jobs:
       - name: Build site (HTML + PDF)
         run: |
           mkdir -p build/site
-          pandoc -s --toc --number-sections \
+          pandoc -s --toc \
             -V toc-title:"Tabla de contenidos" \
             -V geometry:margin=2.5cm \
             -o build/site/index.html build/REPORT_TB1.md
-          pandoc -s --toc --number-sections \
+          pandoc -s --toc \
             -V geometry:margin=2.5cm \
             -o build/site/REPORT_TB1.pdf build/REPORT_TB1.md
+            
+      - name: Add download button to HTML
+        run: |
+          echo '<a href="REPORT_TB1.pdf" download
+          style="position: fixed; top: 20px; right: 20px; background: #007bff; color: white;
+                 padding: 10px 15px; border-radius: 5px; text-decoration: none; font-family: sans-serif;
+                 box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 1000;">
+            📄 Descargar PDF
+          </a>' >> build/site/index.html
   
       - name: Upload artifact to Pages
         uses: actions/upload-pages-artifact@v3
