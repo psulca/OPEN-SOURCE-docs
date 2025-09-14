@@ -39,11 +39,29 @@ jobs:
       cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
+  
+      # ↓ Trae el MD concatenado del job anterior
+      - name: Download concatenated MD
+        uses: actions/download-artifact@v4
+        with:
+          name: REPORT_TB1_md
+          path: build
+  
+      # ↓ Si por X motivo no existe, lo construye de nuevo
+      - name: Ensure REPORT_TB1.md exists
+        run: |
+          if [ ! -f build/REPORT_TB1.md ]; then
+            chmod +x scripts/build-report.sh
+            ./scripts/build-report.sh
+          fi
+          ls -la build
+  
       - name: Install pandoc + LaTeX
         run: |
           sudo apt-get update
           sudo apt-get install -y pandoc
           sudo apt-get install -y texlive-latex-recommended texlive-fonts-recommended texlive-latex-extra
+  
       - name: Build site (HTML + PDF)
         run: |
           mkdir -p build/site
@@ -54,6 +72,7 @@ jobs:
           pandoc -s --toc --number-sections \
             -V geometry:margin=2.5cm \
             -o build/site/REPORT_TB1.pdf build/REPORT_TB1.md
+  
       - name: Upload artifact to Pages
         uses: actions/upload-pages-artifact@v3
         with:
