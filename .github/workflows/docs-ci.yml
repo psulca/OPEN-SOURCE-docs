@@ -1,0 +1,70 @@
+permissions:
+  contents: read
+
+name: Docs CI
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  lint-and-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install markdownlint-cli2
+        run: npm i -g markdownlint-cli2
+      - name: Run markdownlint
+        run: markdownlint-cli2 "**/*.md" "!node_modules"
+
+  build-report:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make script executable
+        run: chmod +x scripts/build-report.sh
+      - name: Build concatenated MD
+        run: ./scripts/build-report.sh
+      - name: Upload artifact (MD)
+        uses: actions/upload-artifact@v4
+        with:
+          name: REPORT_TB1_md
+          path: build/REPORT_TB1.md
+
+  publish-pages:
+    runs-on: ubuntu-latest
+    needs: build-report
+    permissions:
+      pages: write
+      id-token: write
+      contents: read
+    if: github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pandoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc
+      - name: Build site (HTML + PDF)
+        run: |
+          mkdir -p build/site
+          # HTML
+          pandoc -s --toc --number-sections             -V toc-title:"Tabla de contenidos"             -V geometry:margin=2.5cm             -o build/site/index.html build/REPORT_TB1.md
+          # PDF
+          sudo apt-get install -y texlive-latex-recommended texlive-fonts-recommended texlive-latex-extra >/dev/null 2>&1 || true
+          pandoc -s --toc --number-sections             -V geometry:margin=2.5cm             -o build/site/REPORT_TB1.pdf build/REPORT_TB1.md
+          # Simple landing that links to PDF if index wasn't created
+          [ -f build/site/index.html ] || echo '<a href="REPORT_TB1.pdf">Descargar PDF</a>' > build/site/index.html
+      - name: Upload artifact to Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/site
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
